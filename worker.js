@@ -1,554 +1,836 @@
 import channelsData from "./channels.json";
 
-
-// ==========================================
+// ======================================================
 // CONFIG
-// ==========================================
+// ======================================================
 
-// পরে এটাকে Cloudflare Secret-এ নেওয়া ভালো
-const SECRET = "k9Xm2R8vL0wP4zJ7tQ1yN5cB3eF6gH8aS1dU4iO7pM9xK2vW5zL0yN3cB6eF9gH8";
+const TOKEN_LIFETIME = 60 * 60 * 1000; // 1 hour
 
+// তোমার Live TV frontend domain
+const FRONTEND_ORIGIN = "https://boify.free.nf";
 
-// Token কতক্ষণ valid থাকবে
-// 1 hour
-const TOKEN_LIFETIME = 60 * 60 * 1000;
+// Production-এ SECRET অবশ্যই Cloudflare Secret হিসেবে রাখবে.
+// আপাতত test করার জন্য fallback দেওয়া হলো।
+const SECRET = "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET";
 
-
-// ==========================================
+// ======================================================
 // CHANNELS
-// ==========================================
+// ======================================================
 
 const CHANNELS = {};
 
-for (const channel of channelsData.channels) {
+for (const channel of channelsData.channels || []) {
   CHANNELS[channel.id] = channel;
 }
 
-
-// ==========================================
+// ======================================================
 // CORS
-// ==========================================
+// ======================================================
 
 function corsHeaders() {
   return {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": FRONTEND_ORIGIN,
     "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-    "Access-Control-Allow-Headers": "*"
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin"
   };
 }
 
+// ======================================================
+// RESPONSE HELPERS
+// ======================================================
 
-// ==========================================
-// HMAC
-// ==========================================
-
-async function createToken(channelId, expires) {
-
-  const data =
-    `${channelId}:${expires}`;
-
-  const key =
-    await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(SECRET),
-      {
-        name: "HMAC",
-        hash: "SHA-256"
-      },
-      false,
-      ["sign"]
-    );
-
-  const signature =
-    await crypto.subtle.sign(
-      "HMAC",
-      key,
-      new TextEncoder().encode(data)
-    );
-
-  return btoa(
-    String.fromCharCode(
-      ...new Uint8Array(signature)
-    )
-  )
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+function jsonResponse(data, status = 200, extraHeaders = {}) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: {
+      ...corsHeaders(),
+      "Content-Type": "application/json; charset=utf-8",
+      ...extraHeaders
+    }
+  });
 }
 
+function textResponse(text, status = 200, extraHeaders = {}) {
+  return new Response(text, {
+    status,
+    headers: {
+      ...corsHeaders(),
+      "Content-Type": "text/plain; charset=utf-8",
+      ...extraHeaders
+    }
+  });
+}
 
-// ==========================================
-// VERIFY TOKEN
-// ==========================================
+// ======================================================
+// HMAC TOKEN
+// ======================================================
+
+function textToBytes(text) {
+  return new TextEncoder().encode(text);
+}
+
+function bytesToBase64Url(bytes) {
+  let binary = "";
+
+  const chunkSize = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(
+      ...bytes.subarray(i, i + chunkSize)
+    );
+  }
+
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function base64UrlToBytes(str) {
+  str = str
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+
+  while (str.length % 4) {
+    str += "=";
+  }
+
+  const binary = atob(str);
+
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return bytes;
+}
+
+async function getKey(secret) {
+  return crypto.subtle.importKey(
+    "raw",
+    textToBytes(secret),
+    {
+      name: "HMAC",
+      hash: "SHA-256"
+    },
+    false,
+    ["sign"]
+  );
+}
+
+async function createToken(channelId, expires, secret = SECRET) {
+  const payload = `${channelId}:${expires}`;
+
+  const key = await getKey(secret);
+
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    textToBytes(payload)
+  );
+
+  return bytesToBase64Url(
+    new Uint8Array(signature)
+  );
+}
+
+// ======================================================
+// TOKEN VALIDATION
+// ======================================================
 
 async function verifyToken(
   channelId,
   expires,
-  token
+  token,
+  secret = SECRET
 ) {
-
-  if (
-    !channelId ||
-    !expires ||
-    !token
-  ) {
+  if (!channelId || !expires || !token) {
     return false;
   }
 
+  const expiration = Number(expires);
 
-  if (
-    Date.now() >= Number(expires)
-  ) {
+  if (!Number.isFinite(expiration)) {
     return false;
   }
 
+  if (Date.now() > expiration) {
+    return false;
+  }
 
-  const expected =
-    await createToken(
-      channelId,
-      expires
-    );
-
-
-  return token === expected;
-}
-
-
-// ==========================================
-// ABSOLUTE URL
-// ==========================================
-
-function makeAbsoluteUrl(
-  value,
-  base
-) {
+  const expectedToken = await createToken(
+    channelId,
+    expiration,
+    secret
+  );
 
   try {
+    const a = base64UrlToBytes(expectedToken);
+    const b = base64UrlToBytes(token);
 
-    return new URL(
-      value,
-      base
-    ).toString();
+    if (a.length !== b.length) {
+      return false;
+    }
+
+    let result = 0;
+
+    for (let i = 0; i < a.length; i++) {
+      result |= a[i] ^ b[i];
+    }
+
+    return result === 0;
 
   } catch {
+    return false;
+  }
+}
 
+// ======================================================
+// URL HELPERS
+// ======================================================
+
+function absoluteUrl(value, baseUrl) {
+  try {
+    return new URL(value, baseUrl).toString();
+  } catch {
     return null;
   }
 }
 
+function isHttpUrl(value) {
+  try {
+    const u = new URL(value);
 
-// ==========================================
-// REWRITE PLAYLIST
-// ==========================================
+    return (
+      u.protocol === "http:" ||
+      u.protocol === "https:"
+    );
+  } catch {
+    return false;
+  }
+}
 
-function rewritePlaylist(
-  playlist,
-  playlistUrl,
-  workerBase,
+// ======================================================
+// M3U8 REWRITER
+// ======================================================
+
+function rewriteM3U8(
+  content,
+  sourceUrl,
   channelId,
+  expires,
   token,
-  expires
+  workerOrigin
 ) {
+  const lines = content.split(/\r?\n/);
 
-  const lines =
-    playlist.split(/\r?\n/);
+  const output = [];
 
+  for (const line of lines) {
 
-  return lines.map(line => {
+    const trimmed = line.trim();
 
-    const trimmed =
-      line.trim();
-
-
+    // Empty line
     if (!trimmed) {
-      return line;
+      output.push(line);
+      continue;
     }
 
-
-    // ======================================
-    // EXT-X-KEY / EXT-X-MAP
-    // ======================================
+    // --------------------------------------------------
+    // EXT-X-KEY
+    // --------------------------------------------------
 
     if (
-      trimmed.startsWith("#")
+      trimmed.startsWith("#EXT-X-KEY:") ||
+      trimmed.startsWith("#EXT-X-MAP:")
     ) {
 
-      return line.replace(
-        /URI="([^"]+)"/g,
+      const rewritten = line.replace(
+        /URI="([^"]+)"/i,
         (match, uri) => {
 
-          const absolute =
-            makeAbsoluteUrl(
-              uri,
-              playlistUrl
-            );
+          const target = absoluteUrl(
+            uri,
+            sourceUrl
+          );
 
-
-          if (!absolute) {
+          if (!target) {
             return match;
           }
 
-
-          const proxy =
-            `${workerBase}` +
-            `?url=${encodeURIComponent(absolute)}` +
+          const proxyUrl =
+            `${workerOrigin}/proxy` +
+            `?url=${encodeURIComponent(target)}` +
             `&channel=${encodeURIComponent(channelId)}` +
-            `&expires=${expires}` +
+            `&expires=${encodeURIComponent(expires)}` +
             `&token=${encodeURIComponent(token)}`;
 
-
-          return `URI="${proxy}"`;
+          return `URI="${proxyUrl}"`;
         }
       );
+
+      output.push(rewritten);
+      continue;
     }
 
+    // --------------------------------------------------
+    // Other #EXT tags
+    // --------------------------------------------------
 
-    // ======================================
-    // SEGMENT / CHILD PLAYLIST
-    // ======================================
-
-    const absolute =
-      makeAbsoluteUrl(
-        trimmed,
-        playlistUrl
-      );
-
-
-    if (!absolute) {
-      return line;
+    if (trimmed.startsWith("#")) {
+      output.push(line);
+      continue;
     }
 
+    // --------------------------------------------------
+    // Segment / Child Playlist
+    // --------------------------------------------------
 
-    return (
-      `${workerBase}` +
-      `?url=${encodeURIComponent(absolute)}` +
+    const target = absoluteUrl(
+      trimmed,
+      sourceUrl
+    );
+
+    if (!target) {
+      output.push(line);
+      continue;
+    }
+
+    const proxyUrl =
+      `${workerOrigin}/proxy` +
+      `?url=${encodeURIComponent(target)}` +
       `&channel=${encodeURIComponent(channelId)}` +
-      `&expires=${expires}` +
-      `&token=${encodeURIComponent(token)}`
-    );
+      `&expires=${encodeURIComponent(expires)}` +
+      `&token=${encodeURIComponent(token)}`;
 
-  }).join("\n");
+    output.push(proxyUrl);
+  }
+
+  return output.join("\n");
 }
 
-
-// ==========================================
+// ======================================================
 // GET CHANNEL
-// ==========================================
+// ======================================================
 
-function getChannel(id) {
-
-  return CHANNELS[id];
+function getChannel(channelId) {
+  return CHANNELS[channelId] || null;
 }
 
-
-// ==========================================
-// CREATE STREAM URL
-// ==========================================
-
-async function createStreamUrl(
-  requestUrl,
-  channelId
-) {
-
-  const expires =
-    Date.now() + TOKEN_LIFETIME;
-
-
-  const token =
-    await createToken(
-      channelId,
-      expires
-    );
-
-
-  return (
-    `${requestUrl.origin}/${channelId}.m3u8` +
-    `?expires=${expires}` +
-    `&token=${encodeURIComponent(token)}`
-  );
-}
-
-
-// ==========================================
-// WORKER
-// ==========================================
+// ======================================================
+// MAIN WORKER
+// ======================================================
 
 export default {
+  async fetch(request, env) {
 
-  async fetch(request) {
+    const url = new URL(request.url);
 
-    const url =
-      new URL(request.url);
+    // --------------------------------------------------
+    // OPTIONS / CORS
+    // --------------------------------------------------
 
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders()
+      });
+    }
 
-    // ======================================
-    // OPTIONS
-    // ======================================
-
+    // Only GET / HEAD
     if (
-      request.method === "OPTIONS"
+      request.method !== "GET" &&
+      request.method !== "HEAD"
     ) {
-
-      return new Response(
-        null,
+      return textResponse(
+        "Method Not Allowed",
+        405,
         {
-          status: 204,
-          headers: corsHeaders()
+          "Allow": "GET, HEAD, OPTIONS"
         }
       );
     }
 
+    // --------------------------------------------------
+    // SECRET
+    // --------------------------------------------------
 
-    // ======================================
+    // Prefer Cloudflare Secret named SECRET.
+    const secret =
+      env?.SECRET ||
+      SECRET;
+
+    // ==================================================
     // HOME
-    // ======================================
+    // ==================================================
 
-    if (
-      url.pathname === "/"
-    ) {
+    if (url.pathname === "/") {
 
-      return new Response(
-        JSON.stringify({
-          status: "online",
-          service: "Secure M3U8 Gateway",
-          channels:
-            Object.keys(CHANNELS).length
-        }, null, 2),
-        {
-          status: 200,
-          headers: {
-            ...corsHeaders(),
-            "Content-Type":
-              "application/json"
-          }
+      return jsonResponse({
+        status: "online",
+        service: "Secure M3U8 Gateway",
+        channels: Object.keys(CHANNELS).length,
+        endpoints: {
+          channels: "/channels",
+          apiChannels: "/api/channels",
+          playlist: "/playlist.m3u"
         }
-      );
+      });
     }
 
-
-    // ======================================
+    // ==================================================
     // CHANNEL LIST
-    // ======================================
+    // ==================================================
 
     if (
-      url.pathname === "/channels"
+      url.pathname === "/channels" ||
+      url.pathname === "/api/channels"
     ) {
 
-      const list =
-        channelsData.channels.map(
-          channel => ({
-            id: channel.id,
-            name: channel.name,
-            group: channel.group,
-            logo: channel.logo
-          })
+      const list = Object.values(CHANNELS).map(
+        channel => ({
+          id: channel.id,
+          name: channel.name || "",
+          group: channel.group || "",
+          category: channel.category || channel.group || "",
+          logo: channel.logo || ""
+        })
+      );
+
+      return jsonResponse(list, 200, {
+        "Cache-Control": "no-store"
+      });
+    }
+
+    // ==================================================
+    // M3U PLAYLIST
+    // ==================================================
+
+    if (url.pathname === "/playlist.m3u") {
+
+      const lines = [
+        "#EXTM3U"
+      ];
+
+      for (const channel of Object.values(CHANNELS)) {
+
+        const expires = Date.now() + TOKEN_LIFETIME;
+
+        const token = await createToken(
+          channel.id,
+          expires,
+          secret
         );
 
-
-      return new Response(
-        JSON.stringify(
-          list,
-          null,
-          2
-        ),
-        {
-          status: 200,
-          headers: {
-            ...corsHeaders(),
-            "Content-Type":
-              "application/json"
-          }
-        }
-      );
-    }
-
-
-    // ======================================
-    // M3U PLAYLIST
-    // ======================================
-
-    if (
-      url.pathname === "/playlist.m3u"
-    ) {
-
-      let output =
-        "#EXTM3U\n";
-
-
-      for (
-        const channel of
-        channelsData.channels
-      ) {
-
         const streamUrl =
-          await createStreamUrl(
-            url,
-            channel.id
-          );
+          `${url.origin}/${channel.id}.m3u8` +
+          `?expires=${expires}` +
+          `&token=${encodeURIComponent(token)}`;
 
+        const logo = channel.logo || "";
 
-        output +=
-          `#EXTINF:-1`;
+        const group =
+          channel.group ||
+          channel.category ||
+          "Live TV";
 
+        lines.push(
+          `#EXTINF:-1 tvg-id="${channel.id}" tvg-name="${channel.name}" tvg-logo="${logo}" group-title="${group}",${channel.name}`
+        );
 
-        if (channel.logo) {
-
-          output +=
-            ` tvg-logo="${channel.logo}"`;
-        }
-
-
-        if (channel.group) {
-
-          output +=
-            ` group-title="${channel.group}"`;
-        }
-
-
-        output +=
-          `,${channel.name}\n`;
-
-
-        output +=
-          `${streamUrl}\n`;
+        lines.push(streamUrl);
       }
 
-
       return new Response(
-        output,
+        lines.join("\n") + "\n",
         {
           status: 200,
           headers: {
             ...corsHeaders(),
-
-            "Content-Type":
-              "application/x-mpegURL",
-
-            "Cache-Control":
-              "no-store"
+            "Content-Type": "application/vnd.apple.mpegurl; charset=utf-8",
+            "Cache-Control": "no-store"
           }
         }
       );
     }
 
+    // ==================================================
+    // TOKEN API
+    // /token/btv.m3u8
+    // ==================================================
 
-    // ======================================
-    // PROTECTED CHANNEL
-    // ======================================
-
-    if (
-      url.pathname.endsWith(".m3u8")
-    ) {
+    if (url.pathname.startsWith("/token/")) {
 
       const channelId =
         url.pathname
-          .replace(/^\/+/, "")
+          .replace("/token/", "")
           .replace(/\.m3u8$/, "");
-
 
       const channel =
         getChannel(channelId);
 
-
       if (!channel) {
-
-        return new Response(
-          "Channel not found",
+        return jsonResponse(
           {
-            status: 404,
-            headers: corsHeaders()
-          }
+            error: "Channel not found",
+            channel: channelId
+          },
+          404
         );
       }
 
-
       const expires =
-        url.searchParams.get(
-          "expires"
-        );
-
+        Date.now() + TOKEN_LIFETIME;
 
       const token =
-        url.searchParams.get(
-          "token"
+        await createToken(
+          channelId,
+          expires,
+          secret
         );
 
+      const streamUrl =
+        `${url.origin}/${channelId}.m3u8` +
+        `?expires=${expires}` +
+        `&token=${encodeURIComponent(token)}`;
+
+      return jsonResponse(
+        {
+          channel: channelId,
+          name: channel.name || "",
+          expires,
+          token,
+          url: streamUrl
+        },
+        200,
+        {
+          "Cache-Control": "no-store"
+        }
+      );
+    }
+
+    // ==================================================
+    // PROTECTED CHANNEL M3U8
+    // /btv.m3u8?expires=...&token=...
+    // ==================================================
+
+    if (
+      url.pathname.endsWith(".m3u8") &&
+      !url.pathname.startsWith("/token/")
+    ) {
+
+      const channelId =
+        url.pathname
+          .replace(/^\//, "")
+          .replace(/\.m3u8$/, "");
+
+      const channel =
+        getChannel(channelId);
+
+      if (!channel) {
+        return textResponse(
+          "Channel not found",
+          404
+        );
+      }
+
+      const expires =
+        url.searchParams.get("expires");
+
+      const token =
+        url.searchParams.get("token");
 
       const valid =
         await verifyToken(
           channelId,
           expires,
-          token
+          token,
+          secret
         );
 
-
       if (!valid) {
-
-        return new Response(
+        return textResponse(
           "Invalid or expired token",
-          {
-            status: 403,
-            headers: corsHeaders()
-          }
+          403
         );
       }
 
+      if (!channel.url) {
+        return textResponse(
+          "Channel source unavailable",
+          502
+        );
+      }
+
+      try {
+
+        const originResponse =
+          await fetch(channel.url, {
+            method: "GET",
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 SecureStreamGateway",
+              "Accept":
+                "application/vnd.apple.mpegurl,application/x-mpegURL,*/*"
+            }
+          });
+
+        if (!originResponse.ok) {
+          return textResponse(
+            `Origin returned ${originResponse.status}`,
+            502
+          );
+        }
+
+        const content =
+          await originResponse.text();
+
+        const rewritten =
+          rewriteM3U8(
+            content,
+            channel.url,
+            channelId,
+            expires,
+            token,
+            url.origin
+          );
+
+        return new Response(
+          rewritten,
+          {
+            status: 200,
+            headers: {
+              ...corsHeaders(),
+              "Content-Type":
+                "application/vnd.apple.mpegurl",
+              "Cache-Control":
+                "no-store",
+              "Access-Control-Expose-Headers":
+                "Content-Type"
+            }
+          }
+        );
+
+      } catch (error) {
+
+        return jsonResponse(
+          {
+            error: "Failed to fetch origin",
+            message: error?.message || "Unknown error"
+          },
+          502
+        );
+      }
+    }
+
+    // ==================================================
+    // PROXY SEGMENTS / CHILD PLAYLIST / KEY
+    // /proxy?url=...&channel=...&expires=...&token=...
+    // ==================================================
+
+    if (url.pathname === "/proxy") {
+
+      const target =
+        url.searchParams.get("url");
+
+      const channelId =
+        url.searchParams.get("channel");
+
+      const expires =
+        url.searchParams.get("expires");
+
+      const token =
+        url.searchParams.get("token");
+
+      // ----------------------------------------------
+      // Required parameters
+      // ----------------------------------------------
+
+      if (
+        !target ||
+        !channelId ||
+        !expires ||
+        !token
+      ) {
+        return textResponse(
+          "Missing proxy parameters",
+          400
+        );
+      }
+
+      // ----------------------------------------------
+      // Channel exists?
+      // ----------------------------------------------
+
+      const channel =
+        getChannel(channelId);
+
+      if (!channel) {
+        return textResponse(
+          "Channel not found",
+          404
+        );
+      }
+
+      // ----------------------------------------------
+      // Token
+      // ----------------------------------------------
+
+      const valid =
+        await verifyToken(
+          channelId,
+          expires,
+          token,
+          secret
+        );
+
+      if (!valid) {
+        return textResponse(
+          "Invalid or expired token",
+          403
+        );
+      }
+
+      // ----------------------------------------------
+      // Validate target URL
+      // ----------------------------------------------
+
+      if (!isHttpUrl(target)) {
+        return textResponse(
+          "Invalid target URL",
+          400
+        );
+      }
+
+      let targetUrl;
+
+      try {
+        targetUrl = new URL(target);
+      } catch {
+        return textResponse(
+          "Invalid target URL",
+          400
+        );
+      }
+
+      // ----------------------------------------------
+      // Origin hostname allowlist
+      // ----------------------------------------------
+
+      let originUrl;
+
+      try {
+        originUrl =
+          new URL(channel.url);
+      } catch {
+        return textResponse(
+          "Invalid channel origin",
+          500
+        );
+      }
+
+      if (
+        targetUrl.hostname !==
+        originUrl.hostname
+      ) {
+        return textResponse(
+          "Target host not allowed",
+          403
+        );
+      }
+
+      // ----------------------------------------------
+      // Fetch target
+      // ----------------------------------------------
 
       try {
 
         const response =
           await fetch(
-            channel.url,
+            targetUrl.toString(),
             {
+              method: "GET",
               headers: {
                 "User-Agent":
-                  "Mozilla/5.0",
-
+                  "Mozilla/5.0 SecureStreamGateway",
                 "Accept":
                   "*/*"
               }
             }
           );
 
-
         if (!response.ok) {
+          return textResponse(
+            `Origin returned ${response.status}`,
+            502
+          );
+        }
+
+        // --------------------------------------------
+        // Determine content type
+        // --------------------------------------------
+
+        const contentType =
+          response.headers.get(
+            "content-type"
+          ) ||
+          "application/octet-stream";
+
+        // --------------------------------------------
+        // Child M3U8
+        // --------------------------------------------
+
+        if (
+          targetUrl.pathname
+            .toLowerCase()
+            .endsWith(".m3u8") ||
+          contentType
+            .toLowerCase()
+            .includes("mpegurl")
+        ) {
+
+          const content =
+            await response.text();
+
+          const rewritten =
+            rewriteM3U8(
+              content,
+              targetUrl.toString(),
+              channelId,
+              expires,
+              token,
+              url.origin
+            );
 
           return new Response(
-            `Origin error: ${response.status}`,
+            rewritten,
             {
-              status: 502,
-              headers: corsHeaders()
+              status: 200,
+              headers: {
+                ...corsHeaders(),
+                "Content-Type":
+                  "application/vnd.apple.mpegurl",
+                "Cache-Control":
+                  "no-store"
+              }
             }
           );
         }
 
-
-        const playlist =
-          await response.text();
-
-
-        const rewritten =
-          rewritePlaylist(
-            playlist,
-            channel.url,
-            `${url.origin}/proxy`,
-            channelId,
-            token,
-            expires
-          );
-
+        // --------------------------------------------
+        // Segment / key / other binary
+        // --------------------------------------------
 
         return new Response(
-          rewritten,
+          response.body,
           {
-            status: 200,
-
+            status: response.status,
             headers: {
               ...corsHeaders(),
-
-              "Content-Type":
-                "application/vnd.apple.mpegurl",
-
+              "Content-Type": contentType,
               "Cache-Control":
                 "no-store"
             }
@@ -557,273 +839,28 @@ export default {
 
       } catch (error) {
 
-        return new Response(
-          "Origin request failed",
+        return jsonResponse(
           {
-            status: 502,
-            headers: corsHeaders()
-          }
+            error: "Proxy request failed",
+            message:
+              error?.message ||
+              "Unknown error"
+          },
+          502
         );
       }
     }
 
-
-    // ======================================
-    // PROXY
-    // ======================================
-
-    if (
-      url.pathname === "/proxy"
-    ) {
-
-      const target =
-        url.searchParams.get(
-          "url"
-        );
-
-
-      const channelId =
-        url.searchParams.get(
-          "channel"
-        );
-
-
-      const expires =
-        url.searchParams.get(
-          "expires"
-        );
-
-
-      const token =
-        url.searchParams.get(
-          "token"
-        );
-
-
-      if (
-        !target ||
-        !channelId ||
-        !expires ||
-        !token
-      ) {
-
-        return new Response(
-          "Missing parameters",
-          {
-            status: 400,
-            headers: corsHeaders()
-          }
-        );
-      }
-
-
-      const valid =
-        await verifyToken(
-          channelId,
-          expires,
-          token
-        );
-
-
-      if (!valid) {
-
-        return new Response(
-          "Invalid or expired token",
-          {
-            status: 403,
-            headers: corsHeaders()
-          }
-        );
-      }
-
-
-      const channel =
-        getChannel(channelId);
-
-
-      if (!channel) {
-
-        return new Response(
-          "Channel not found",
-          {
-            status: 404,
-            headers: corsHeaders()
-          }
-        );
-      }
-
-
-      let targetUrl;
-
-      try {
-
-        targetUrl =
-          new URL(target);
-
-      } catch {
-
-        return new Response(
-          "Invalid URL",
-          {
-            status: 400,
-            headers: corsHeaders()
-          }
-        );
-      }
-
-
-      // ======================================
-      // HOST SECURITY
-      // ======================================
-
-      const allowedHost =
-        new URL(
-          channel.url
-        ).hostname;
-
-
-      if (
-        targetUrl.hostname !==
-        allowedHost
-      ) {
-
-        return new Response(
-          "Host not allowed",
-          {
-            status: 403,
-            headers: corsHeaders()
-          }
-        );
-      }
-
-
-      try {
-
-        const response =
-          await fetch(
-            targetUrl.toString(),
-            {
-              headers: {
-                "User-Agent":
-                  "Mozilla/5.0",
-
-                "Accept":
-                  "*/*"
-              }
-            }
-          );
-
-
-        if (!response.ok) {
-
-          return new Response(
-            `Origin error: ${response.status}`,
-            {
-              status: response.status,
-              headers: corsHeaders()
-            }
-          );
-        }
-
-
-        const contentType =
-          response.headers.get(
-            "content-type"
-          ) || "";
-
-
-        // ==================================
-        // CHILD M3U8
-        // ==================================
-
-        if (
-          contentType.includes(
-            "mpegurl"
-          ) ||
-          targetUrl.pathname.endsWith(
-            ".m3u8"
-          )
-        ) {
-
-          const playlist =
-            await response.text();
-
-
-          const rewritten =
-            rewritePlaylist(
-              playlist,
-              targetUrl.toString(),
-              `${url.origin}/proxy`,
-              channelId,
-              token,
-              expires
-            );
-
-
-          return new Response(
-            rewritten,
-            {
-              status: 200,
-
-              headers: {
-                ...corsHeaders(),
-
-                "Content-Type":
-                  "application/vnd.apple.mpegurl",
-
-                "Cache-Control":
-                  "no-store"
-              }
-            }
-          );
-        }
-
-
-        // ==================================
-        // VIDEO SEGMENT
-        // ==================================
-
-        return new Response(
-          response.body,
-          {
-            status: response.status,
-
-            headers: {
-              ...corsHeaders(),
-
-              "Content-Type":
-                contentType ||
-                "application/octet-stream",
-
-              "Cache-Control":
-                "no-store"
-            }
-          }
-        );
-
-      } catch {
-
-        return new Response(
-          "Proxy request failed",
-          {
-            status: 502,
-            headers: corsHeaders()
-          }
-        );
-      }
-    }
-
-
-    // ======================================
+    // ==================================================
     // 404
-    // ======================================
+    // ==================================================
 
-    return new Response(
-      "Not found",
+    return jsonResponse(
       {
-        status: 404,
-        headers: corsHeaders()
-      }
+        error: "Not Found",
+        path: url.pathname
+      },
+      404
     );
   }
 };
