@@ -1,0 +1,12 @@
+name = "m3u8-proxy-api"
+main = "src/worker.js"
+compatibility_date = "2024-01-01"
+
+# Environment variables (optional)
+[vars]
+ENVIRONMENT = "production"
+
+# For custom domain (optional)
+# routes = [
+#   { pattern = "api.yourdomain.com", custom_domain = true }
+# ]
