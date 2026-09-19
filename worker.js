@@ -6,7 +6,7 @@ import channelsData from "./channels.json";
 // ==========================================
 
 // পরে এটাকে Cloudflare Secret-এ নেওয়া ভালো
-const SECRET = "CHANGE_THIS_SECRET_123456789";
+const SECRET = "k9Xm2R8vL0wP4zJ7tQ1yN5cB3eF6gH8aS1dU4iO7pM9xK2vW5zL0yN3cB6eF9gH8";
 
 
 // Token কতক্ষণ valid থাকবে
