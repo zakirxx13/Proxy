@@ -1,0 +1,186 @@
+{
+  "channels": [
+    {
+      "id": "rajdhani",
+      "name": "Rajdhani",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/0QRnM89n/20240825-071012.png",
+      "url": "https://stream.shariarsuvo.com/hls5/rajdhanicable.m3u8"
+    },
+    {
+      "id": "btv",
+      "name": "BTV",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/0215t9fT/btv.png",
+      "url": "https://btv.hridoytv-channel.workers.dev/btv.m3u8"
+    },
+    {
+      "id": "btv_news",
+      "name": "BTV News",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/28VMF8hx/btv-news.png",
+      "url": "https://btv.hridoytv-channel.workers.dev/news.m3u8"
+    },
+    {
+      "id": "atn_bangla",
+      "name": "ATN Bangla",
+      "group": "Bangladeshi",
+      "logo": "https://raw.githubusercontent.com/ahan443/logo/refs/heads/main/atn%20bangla.png",
+      "url": "https://tvsen5.aynaott.com/P3y2URgG7LDe/index.m3u8"
+    },
+    {
+      "id": "atn_news",
+      "name": "ATN News",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/W4SwWtd3/20240822-225840.png",
+      "url": "https://tvsen6.aynaott.com/da6WMXAk/index.m3u8"
+    },
+    {
+      "id": "boishakhi",
+      "name": "Boishakhi",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/5NFp4xR7/20240822-225600.png",
+      "url": "https://tvsen6.aynaott.com/1d3uG9VCgrR9DRtWZM57/index.m3u8"
+    },
+    {
+      "id": "ekushe_tv",
+      "name": "Ekushe TV",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/rsDjtcFp/20240822_225424.png",
+      "url": "https://tvsen5.aynaott.com/SyQuXz8sC3TB/index.m3u8"
+    },
+    {
+      "id": "channel_i",
+      "name": "Channel i",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/W3WS3tVK/20240822-225402.png",
+      "url": "https://tvsen6.aynaott.com/FNHpYvGZ7FkCE10PwTHm/index.m3u8"
+    },
+    {
+      "id": "n_tv",
+      "name": "N TV",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/3rqnQyn0/20240822-225501.png",
+      "url": "https://tvsen5.aynaott.com/xV4jEKf3D9zc/index.m3u8"
+    },
+    {
+      "id": "rtv",
+      "name": "RTV",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/fy1KcFJf/20240822_225533.png",
+      "url": "https://tvsen5.aynaott.com/RtvHD/index.m3u8"
+    },
+    {
+      "id": "banglavision",
+      "name": "Banglavision",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/CK2fPdmm/banglavision.png",
+      "url": "https://tvsen5.aynaott.com/tgUzpPc9r6xw/index.m3u8"
+    },
+    {
+      "id": "somoy_tv",
+      "name": "Somoy Tv",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/QCKgdb09/20240822-230145.png",
+      "url": "https://tvsen5.aynascope.net/somoytv/mono.m3u8"
+    },
+    {
+      "id": "independent",
+      "name": "Independent",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/gr9VXZTM/20240822-230259.png",
+      "url": "https://drk6xq0vhn.gpcdn.net/live/independent_tv_abr/live/independent_tv_720/chunks.m3u8"
+    },
+    {
+      "id": "jamuna",
+      "name": "Jamuna",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/G2V7K9fD/20240822-230750.png",
+      "url": "https://tvsen6.aynaott.com/KGdZEdA7qQ43dmPkgk1j/index.m3u8"
+    },
+    {
+      "id": "channel_1",
+      "name": "Channel 1",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/Zqgx8hm1/20260430-184013.png",
+      "url": "https://app24.jagobd.com.bd/c3VydmVyX8RpbEU9Mi8xNy8yMFDEEHGcfRgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcEdsEfeDeKiNkVN3PTOmdFseWRtaW51aiPhnPTI2/channel1bd.stream/playlist.m3u8"
+    },
+    {
+      "id": "star_news",
+      "name": "Star News",
+      "group": "Bangladeshi",
+      "logo": "https://static.wikia.nocookie.net/etv-gspn-bangla/images/4/45/Star_News_Bangladesh.png",
+      "url": "https://app24.jagobd.com.bd/c3VydmVyX8RpbEU9Mi8xNy8yMFDEEHGcfRgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcEdsEfeDeKiNkVN3PTOmdFseWRtaW51aiPhnPTI2/starnewsbd.stream/playlist.m3u8"
+    },
+    {
+      "id": "rajdhani_alt",
+      "name": "Rajdhani (ALT)",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/0QRnM89n/20240825-071012.png",
+      "url": "https://drk6xq0vhn.gpcdn.net/live/rajdhani_tv/index.m3u8"
+    },
+    {
+      "id": "ja_tv",
+      "name": "JA TV",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/NGkpvww2/jatv.png",
+      "url": "https://dish.porosh.com.bd/hls/jtvnews.m3u8"
+    },
+    {
+      "id": "ep_tv",
+      "name": "EP TV",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/dQyBRGZR/eptv-large-1784915389231-9f42f1b48d424c8c.webp",
+      "url": ""
+    },
+    {
+      "id": "news_21_bangla_tv",
+      "name": "News 21 Bangla TV",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/8knh34Z5/iju-Jfmd.png",
+      "url": "http://103.190.133.68:1935/news21live/live/playlist.m3u8"
+    },
+    {
+      "id": "enter_tv",
+      "name": "Enter TV",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/g06jByt1/entertv.jpg",
+      "url": "https://live1.entertv.com.bd/entertv/index.fmp4.m3u8"
+    },
+    {
+      "id": "ekattor_hd",
+      "name": "Ekattor HD",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/BnBz3S8W/20240822-230603.png",
+      "url": "https://tvsen6.aynaott.com/EWDrV5QskgarZEUBb3pU/index.m3u8"
+    },
+    {
+      "id": "channel_24",
+      "name": "Channel 24",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/0ys4hMyd/20240822-230446.png",
+      "url": "https://drk6xq0vhn.gpcdn.net/live/channel_24_abr/index.m3u8"
+    },
+    {
+      "id": "dbc_news",
+      "name": "DBC News",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/hvmC5cF5/20240822_230837.png",
+      "url": "https://tvsen6.aynaott.com/pF66Tkz0qFwP2aMMqHyt/index.m3u8"
+    },
+    {
+      "id": "star_bangla",
+      "name": "Star Bangla",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/FH77wv4L/Star-bangla.png",
+      "url": "http://103.151.60.162:2122/play/a0f5/index.m3u8"
+    },
+    {
+      "id": "desh_tv",
+      "name": "Desh TV",
+      "group": "Bangladeshi",
+      "logo": "https://i.postimg.cc/xTz0Qj3G/DESH-TV1.png",
+      "url": ""
+    }
+  ]
+    }
