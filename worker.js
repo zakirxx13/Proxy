@@ -1,14 +1,13 @@
 const CHANNELS = {
-  "btv.m3u8": {
-    name: "BTV",
+  "ATN.m3u8": {
+    name: "ATN Bangla",
     url: "https://tvsen5.aynaott.com/P3y2URgG7LDe/index.m3u8"
   },
 
-  // নতুন channel এভাবে যোগ করবে:
-  // "channel2.m3u8": {
-  //   name: "Channel 2",
-  //   url: "https://example.com/live/index.m3u8"
-  // }
+  "ETV.m3u8": {
+    name: "Ekushe Tv",
+    url: "https://tvsen5.aynaott.com/SyQuXz8sC3TB/index.m3u8"
+  },
 };
 
 
