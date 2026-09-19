@@ -4,7 +4,7 @@ const SECRET = "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET";
 const CHANNELS = {
   "1": {
     name: "Channel 1",
-    url: "https://YOUR-ORIGIN.com/channel1/index.m3u8"
+    url: "https://tvsen5.aynaott.com/P3y2URgG7LDe/index.m3u8"
   },
 
   "2": {
