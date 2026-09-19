@@ -1,0 +1,17 @@
+{
+  "name": "m3u8-proxy-api",
+  "version": "1.0.0",
+  "description": "Public M3U8 Proxy API with header bypass",
+  "main": "src/worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "keywords": ["m3u8", "proxy", "streaming", "hls"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
