@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M3U8 Proxy API</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #111827, #312e81);
+      color: white;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 700px;
+      padding: 30px;
+      border-radius: 24px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(15px);
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    p {
+      color: rgba(255,255,255,.75);
+      line-height: 1.6;
+    }
+
+    code {
+      display: block;
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 12px;
+      background: rgba(0,0,0,.35);
+      overflow-x: auto;
+      text-align: left;
+      word-break: break-all;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="card">
+    <h1>🎬 M3U8 Proxy API</h1>
+
+    <p>
+      HLS/M3U8 proxy service is running.
+    </p>
+
+    <p>
+      Use the API endpoint:
+    </p>
+
+    <code>
+      /api/proxy?url=ENCODED_M3U8_URL
+    </code>
+  </div>
+
+</body>
+</html>
